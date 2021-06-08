@@ -1,0 +1,570 @@
+---
+title: 'Práctica 2: Tratamiento y análisis de un dataset'
+author: "Alejandro Hernández Naranjo"
+date: "8 de junio de 2021"
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    toc: yes
+    toc_depth: 2
+    number_sections: yes
+    theme: united
+    highlight: tango
+subtitle: Máster Universitario en Ciencia de Datos | M2.851
+---
+<style type="text/css">
+
+h1.title {
+  font-size: 38px;
+  color: DarkBlue;
+  text-align: center;
+}
+h3.subtitle {
+  color: Blue;
+  text-align: center;
+}
+
+h4.author { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  color: Black;
+  text-align: center;
+}
+h4.date { /* Header 4 - and the author and data headers use this too  */
+  font-size: 18px;
+  color: Black;
+  text-align: right;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Introducción
+
+En este trabajo se desarrolla un caso práctico para identificar aquellos datos relevantes de un proyecto analítico donde se realizarán la integración, limpieza, validación y análisis de los datos.
+
+Se ha realizado por Alejandro Hernández Naranjo con un __dataset__ que recopila datos relativos a jugadores de fútbol profesional obtenido de kaggle.
+
+## Librería
+Para la correcta ejecución de este trabajo se utilizan los siguientes paquetes.
+```{r Librería, message=FALSE, warning=FALSE}
+library("stringr")
+library("lubridate")
+library("randomForest")
+library("Hmisc")
+library("nortest")
+library("kableExtra")
+```
+
+# Descripción del dataset
+El dataset seleccionado se puede encontrar en <https://www.kaggle.com/karangadiya/fifa19>. Este dataset recoge los atributos de los jugadores que figuran en el videojuego FIFA 19. La descripción de la mayoría de los atributos se puede consultar en <https://www.fifplay.com/encyclopedia/>.
+
+Para el desarrollo del videojuego FIFA 19 se hace una recopilación de las características reales de los jugadores de fútbol y puntúa a su vez las habilidades que estos han demostrado durante sus partidos. De este modo le confiere cierta fidelidad a la realidad, lo que confiere a su vez al dataset unos datos de alta calidad.
+
+Dicho esto, con él pretendo analizar diferencias entre jugadores zurdos y diestros, el valor de mercado de los jugadores y la influencia de sus atributos físicos en calidad como jugadores. 
+
+## Campos
+
+- **X.U.FEFF.**: Número de la fila
+- **ID**: Identificador único del jugador.
+- **Name**: Nombre del jugador
+- **Age**: Edad del jugador
+- **Photo**: Enlace web con la foto del jugador.
+- **Nationality**: Nacionalidad del jugador.
+- **Flag**: Enlace web con la bandera de su nacionalidad.
+- **Overall**: Puntuación que valora en término globales qué buen jugador es respecto a sus habilidades y rendimiento.
+- **Potential**: Puntuación que valora la capacidad global de un jugador de alcanzar unas habilidades o rendimientos.
+- **Club**: Club de fútbol en el que está registrado el jugador en el momento en el que se constituyó el dataset.
+- **Club.logo**: Enlace web donde podemos encontrar la imagen del logo del club.
+- **Value**: Precio del jugador en el mercado.
+- **Wage**: Salario del jugador.
+- **Preferred.Foot**: Pie preferido o dominante, es decir, si es zurdo o diestro.
+- **International.Reputation**: Es una puntuación de prestigio internacional.
+- **Weak.Foot**: Puntuación de habilidad con el pie que no es el preferido.
+- **Skill.Moves**: Puntuación de la habilidad en el movimiento.
+- **Work.Rate**: Desempeño del jugador en ataque y defensa.
+- **Body.Type**: A la morfología del cuerpo del jugador le han asignado el nombre de cada jugador.
+- **Real.Face**: Indica si la cara es la real del jugador o no.
+- **Position**: Posición que ocupa el jugador en el campo.
+- **Jersey.Number**: Número de dorsal del jugador.
+- **Joined**: Fecha en la que el jugador se incorporó a su club.
+- **Loaned.From**: El club de donde el jugador es prestado.
+- **Contact.Valid.Until**: Año hasta que es vigente el contrato del jugador.
+- **Height**: Altura del jugador en pies.
+- **Weight**: Peso en libras del jugador.
+- **LS**: Puntuación como _Left Striker_.
+- **ST**: Puntuación como _Striker_.
+- **RS**: Puntuación como _Right Striker_.
+- **LW**: Puntuación como _Left Wing_.
+- **LF**: Puntuación como _Left Forward_.
+- **CF**: Puntuación como _Centre Forward_.
+- **RF**: Puntuación como _Right Forward_.
+- **RW**: Puntuación como _Right Wing_.
+- **LAM**: Puntuación como _Left Attacking Midfielder_.
+- **CAM**: Puntuación como _Centre Attacking Midfielder_.
+- **RAM**: Puntuación como _Right Attacking Midfielder_.
+- **LM**: Puntuación como _Left Midfielder_.
+- **LCM**: Puntuación como  _Left Centre Midfielder_.
+- **CM**: Puntuación como _Centre Midfielder_.
+- **RCM**: Puntuación como _Right Centre Midfielder_.
+- **RM**: Puntuación como _Right Midfielder_.
+- **LWB**: Puntuación como _Left Wing Back_.
+- **LDM**: Puntuación como _Left Defensive Midfielder_.
+- **CDM**: Puntuación como _Central Defensive Midfielder_.
+- **RDM**: Puntuación como _Right Defensive Midfielder_.
+- **RWB**: Puntuación como _Right Wing Back_.
+- **LB**: Puntuación como _Left Back_.
+- **LCB**: Puntuación como _Left Centre Back_.
+- **CB**: Puntuación como _Centre Back_.
+- **RCB**: Puntuación como _Right Centre Back_.
+- **RB**: Puntuación como _Right Back_.
+- **Crossing**: Puntuación dando pases largos desde las bandas hacia áreas centrales campo cercanas a la portería del oponente.
+- **Finishing**: Puntuación relativa a la habilidad del jugador de acabar la jugada en gol.
+- **HeadingAccuracy**: Puntuación para valorar la precisión del jugador usando la cabeza para pasar, disparar a puerta o despejar la pelota.
+- **ShorPassing**: Puntuación dando pasaes cortos.
+- **Volleys**: Puntuación sobre la habilidad del jugador en las voleas.
+- **Dribbling**: Puntuación en maniobras de _dribbling_. 
+- **Curve**: Puntuación que valora la habilidad del jugador de curvar la trayectoria que describe el balón cuando pasa o dispara a puerta.
+- **FKAccuracy**: Puntuación en _Free Kick Accuracy_.
+- **LongPassing**: Puntuación en pases largos.
+- **BallControl**: Puntuación en control del balón.
+- **Acceleration**: Puntuación que determina la capacidad de acelerar la velocidad de carrera.
+- **SrpintSpeed**: Puntuación para valorar la velocidad en _sprint_.
+- **Agility**: Puntuación de agilidad del jugador para controlar el balón. Tiene en cuenta la parte física y mental.
+- **Reactions**: Puntuación de la reacción del jugador a los sucesos de su entorno.
+- **Balance**: Puntuación del equilibrio del jugador.
+- **ShotPower**: Puntuación en la potencia de disparo. 
+- **Jumping**: Puntuación de salto.
+- **Stamina**: Puntuación que mide la capacidad de mantener un esfuerzo físico o mental.
+- **Strength**: Puntuación en fuerza.
+- **Aggression**: Puntuación en el nivel de casitgo y de presionar al contrario.
+- **Intercepctions**: Puntuación en la habilidad de interceptar la pelota.
+- **LongShots**: Puntuación en disparos largos.
+- **Positioning**: Puntuación sobre lo bien que se posiciona el jugador en el campo.
+- **Vision**: Puntuación en la habilidad mental de proyectar o entender las jugadas que se van a ejecutar.
+- **Penalties**: Puntuación de la precisión en los tiros de penalti.
+- **Composure**: Puntuación de la capacidad de mantener la compostura ante situaciones frustrantes o tensas.
+- **Marking**: Puntuación de marcaje del oponente para prevenir que reciba la pelota.
+- **StandingTackle**: Puntuación en el robo de balón estando de pie.
+- **SlidingTackle**: Puntuación en el robo de balón deslizandose por el suelo.
+- **GKDiving**: Puntuación del portero al lanzarse para capturar la pelota.
+- **GKKicking**: Puntuación del portero para patear la bola.
+- **GKPositioning**: Puntuación del portero para posicionarse correctamente.
+- **GKReflexes**: Puntuación del portero en reflejos.
+- **Release.Clause**: Precio a pagar para liberar el contrato de un jugador con su actual club.
+
+# Selección de los datos de interés
+
+Pondré el foco en los campos que aportan información relativa a los atributos físicos de los jugadores y en los que puntúan sus habilidades.
+
+Se tomará como referencia la posición del jugador que figura en el campo **Position**, por lo tanto, descarto aquellos campos que puntuaban al jugador en cada posición. 
+
+El atributo Overall se calcula teniendo en cuenta los atributos físicos, mentales y habilidades, con él podremos reducir la dimensionalidad del conjunto descartando el resto de puntuaciones. En la fórmula de cálculo del Overall también se tiene en cuenta la reputación iternacional.
+
+```{r selección}
+# Lectura del dataset.
+data_fifa <- read.csv("data.csv", header=TRUE, encoding="UTF-8")
+# Selección de columnas.
+columnas <- c('ID', 'Age', 'Nationality', 'Overall', 'Club', 'Value', 'Wage',
+              'Preferred.Foot','Weak.Foot','Skill.Moves', 'Work.Rate',
+              'Position', 'Height', 'Weight')
+fifa_DF <- data_fifa[,columnas]
+# Estructura del dateset resultante
+str(fifa_DF)
+```
+
+# Limpieza de los datos
+
+En esta etapa voy formatear los datos y prepararlos para la aplicación de los métodos de análisis de las siguientes fases.
+
+Un vistazo a la composición del dataset revela que hay muchos campos numéricos con tipo **chr** porque han incluido los caracteres de las unidades de medida. Por otro lado, hay otros campos de caracteres que pueden ser factorizados, lo que permitirá cuantificar las ocurrencias de cada categoría.
+
+## Normalización de datos cuantitativos
+
+### Value
+Este campo contiene una cadena de texto compuesto por el símbolo del € y un sufijo M o K como notación de la magnitud, si son millones o miles.
+
+La estrategia sería, usando **gsub**, eliminar ambos caracteres, convertir el dato a número y posteriormente multiplicarlo por su magnitud. 
+```{r norm value}
+# Eliminar símbolo del Euro € ("\200") de la cadena.
+fifa_DF$Value <- gsub("€", '',fifa_DF$Value)
+
+# Recorremos las filas del dataset
+for (i in 1:nrow(fifa_DF)) {
+  # Si contiene M:
+  if (str_detect(fifa_DF$Value[i], "M") && !is.na(fifa_DF$Value[i])) {
+    # Elimino la M del string y convierto a double.
+    valor <-  as.double(gsub("M", '',fifa_DF$Value[i]))
+    # Como M representa 1 millón, multiplico el valor por 1 millón.
+    fifa_DF$Value[i] <- valor * 1000000
+  } 
+  # Si contiene K:
+  if (str_detect(fifa_DF$Value[i], "K") && !is.na(fifa_DF$Value[i])){
+    # Elimino la K del string y convierto a double.
+    valor <-  as.double(gsub("K", '',fifa_DF$Value[i]))
+    # Como K representa mil, multiplico el valor por 1000.
+    fifa_DF$Value[i] <- valor * 1000
+  }
+}
+fifa_DF$Value <- as.numeric(fifa_DF$Value)
+
+summary(fifa_DF$Value)
+```
+
+### Wage
+El campo **Wage** está expresado con el mismo formato que **Value**, con lo cual aplicamos las mismas instrucciones.
+```{r norm wage}
+# Eliminar símbolo del Euro € ("\200") de la cadena.
+fifa_DF$Wage <- gsub("€", '',fifa_DF$Wage)
+
+# Recorremos las filas del dataset
+for (i in 1:nrow(fifa_DF)) {
+  # Si contiene M:
+  if (str_detect(fifa_DF$Wage[i], "M") && !is.na(fifa_DF$Wage[i])) {
+    # Elimino la M del string y convierto a double.
+    valor <-  as.double(gsub("M", '',fifa_DF$Wage[i]))
+    ## Como M representa 1 millón, multiplico el valor por 1 millón.
+    fifa_DF$Wage[i] <- valor * 1000000
+  } 
+  # Si contiene K:
+  if (str_detect(fifa_DF$Wage[i], "K") && !is.na(fifa_DF$Wage[i])){
+    # Elimino la K del string y convierto a double.
+    valor <-  as.double(gsub("K", '',fifa_DF$Wage[i]))
+    # Como K representa mil, multiplico el valor por 1000.
+    fifa_DF$Wage[i] <- valor * 1000
+  }
+}
+fifa_DF$Wage <- as.numeric(fifa_DF$Wage)
+
+summary(fifa_DF$Wage)
+```
+
+### Height
+La altura está escrita con un apóstrofe como separador decimal. Uso **gsub** para sustituir el separador por el punto (.). El factor de conversión de pies a metros usado es $0.3048$
+```{r norm Height}
+# Sustituyo la (') por el punto  (.)
+fifa_DF$Height <- gsub("'", '.',fifa_DF$Height)
+# Convierto el tipo de la variable numeric
+fifa_DF$Height <- as.numeric(fifa_DF$Height)
+# Camio la unidedad de pies a metros.
+fifa_DF$Height <- fifa_DF$Height*0.3048
+
+summary(fifa_DF$Height)
+```
+
+### Weight
+El peso está escrito usando el punto como separador decimal, con lo cual, solo hay que quitar los caracteres de la unidad de medida y convertir el campo a numérico. El factor de conversión de libras a Kilogramos usado es $2.2046$
+```{r norm Weight}
+# Elimino los caracteres lbs del string
+fifa_DF$Weight <- gsub("lbs", '',fifa_DF$Weight)
+# Convierto el tipo de la variable numeric
+fifa_DF$Weight <- as.numeric(fifa_DF$Weight)
+# Camio la unidedad de libras a kilogramos
+fifa_DF$Weight <- fifa_DF$Weight/2.2046
+
+summary(fifa_DF$Weight)
+```
+
+## Normalización de datos cualitativos
+Durante el desarrollo de la actividad he visto que estos campos tienen algunas cadenas vacías. Entonces, antes de convertir a factor sustituyo los campos vacíos por el elemento **NA** para que el sistema reconozca que es valor nulo. De no ser así el valor vacío sería interpretado como una categoría más del conjunto.
+
+### Nationality
+```{r norm Nationality}
+# Valores que puede tomar Nationality
+head(unique(fifa_DF$Nationality), 15)
+# Hacer que los strings vacíos sean nulos
+fifa_DF$Nationality[fifa_DF$Nationality==''] <- NA
+# Convertir a factor
+fifa_DF$Nationality <- factor(fifa_DF$Nationality)
+
+summary(fifa_DF$Nationality)
+```
+
+### Club
+```{r norm Club}
+# Valores que puede tomar Club
+head(unique(fifa_DF$Club), 15)
+# Hacer que los strings vacíos sean nulos
+fifa_DF$Club[fifa_DF$Club==''] <- NA
+# Convertir a factor
+fifa_DF$Club <- factor(fifa_DF$Club)
+
+summary(fifa_DF$Club)
+```
+
+### Preferred.Foot
+```{r norm Preferred.Foot}
+# Valores que puede tomar Preferred.Foot
+unique(fifa_DF$Preferred.Foot)
+# Hacer que los strings vacíos sean nulos
+fifa_DF$Preferred.Foot[fifa_DF$Preferred.Foot==''] <- NA
+# Convertir a factor
+fifa_DF$Preferred.Foot <- factor(fifa_DF$Preferred.Foot)
+
+summary(fifa_DF$Preferred.Foot)
+```
+
+### Work.Rate
+```{r norm Work rate}
+
+# Valores que puede tomar Work.Rate
+unique(fifa_DF$Work.Rate)
+# Hacer que los strings vacíos sean nulos
+fifa_DF$Work.Rate[fifa_DF$Work.Rate==''] <- NA
+# Convertir a factor
+fifa_DF$Work.Rate <- factor(fifa_DF$Work.Rate)
+
+summary(fifa_DF$Work.Rate)
+```
+
+### Position
+```{r norm Position}
+
+## Position
+unique(fifa_DF$Position)
+# Hacer que los strings vacíos sean nulos
+fifa_DF$Position[fifa_DF$Position==''] <- NA
+# Convertir a factor
+fifa_DF$Position <- factor(fifa_DF$Position)
+
+summary(fifa_DF$Position)
+```
+
+## Valores nulos
+
+A medida que he realizado la normalización de los campos se puede ver que contienen valores nulos o vacíos. 
+```{r nulos 1}
+# Nulos por columna
+colSums(is.na(fifa_DF))
+# Almaceno el índice de los registros que tienen nulos en Height
+idx <- which(is.na(fifa_DF$Height))
+```
+
+Salvo los campos de **Nationality** y **Club**, los 48 jugadores que tienen, los tienen en los mismos atributos físicos.
+```{r nulo 2}
+summary(fifa_DF[is.na(fifa_DF),])
+```
+
+Estos 48 jugadores tienen la particularidad de tener 62 puntos de **Overall**, sospecho que obedece a algún patrón pero no se explicar por qué se debe. He consultado *sofifa* y he visto que en revisiones posteriores de la base de datos se han actualizado estos campos. 
+
+No opto por rescatar esos datos a posteriori e integrarlos manualmente porque los atributos de los jugadores de este dataset también pueden haber sufrido cambios en las revisiones futuras. No sería justo comparar jugadores en instantes de tiempo diferentes si son jugadores coetáneos ya que el entorno o el contexto en diferentes espacios temporales puede ser muy diferente.
+
+Dicho esto, trato por imputar los valores nulos con un modelo **Random Forest** que me permitirá hacer una imputación multivariante contemplando todo el dataset. 
+
+Debido a la alta cardinalidad de los campos *Nationality* y *Club* ( más de 53 categorías ) debo excluirlos del modelo.
+
+```{r imputar RF, eval=FALSE}
+# Imputación con random forest
+set.seed(123)
+fifa_imputed <- rfImpute(Overall ~ ., ntree=250, iter=3, data=fifa_DF[,!names(fifa_DF) %in% c('ID', 'Nationality', 'Club')])
+# Resultados de la imputación
+summary(fifa_imputed[idx,])
+```
+
+Tenemos una varianza explicada muy pequeña, no se están imputando los valores correctamente, así que prefiero eliminar del conjunto estos jugadores 48 jugadores. 
+
+También lo intenté con el paquete Hmisc que ofrece un método bastante robusto pero arroja $R^2$ en las predicciones muy pequeñas, por lo que tampoco predice correctamente.
+
+```{r imputar Hmisc, eval=FALSE}
+fifa_imputed_2 <- aregImpute(~Age + Overall + Wage + Preferred.Foot + 
+                               Weak.Foot + Skill.Moves + Work.Rate + Position +
+                               Height + Weight + Value,
+                             data = fifa_DF[,!names(fifa_DF) %in% c('ID', 'Nationality', 'Club')],
+                             n.impute = 5)
+```
+
+Nos quedamos con los registros que tengan sus atributos completos, es decir, eliminamos del dataset los nulos.
+```{r elim nulos}
+fifa_clean <- fifa_DF[complete.cases(fifa_DF[, c('Overall', 'Value', 'Wage',
+                                                 'Preferred.Foot', 'Weak.Foot',
+                                                 'Skill.Moves', 'Work.Rate',
+                                                 'Position', 'Height', 'Weight')
+                                             ]),]
+```
+
+## Outliers
+Para los valores anómalos o atípicos en las variables cuantitativas usaré boxplots y con un indicador de la media para tener una primera visión de la dispersión y centralidad.
+```{r rating grafo distribucion boxplot, fig.height=5, fig.width=10, echo=FALSE}
+# Age
+boxplot(fifa_clean$Age, col="lightcyan", horizontal=TRUE, main="Age")
+points(mean(fifa_clean$Age), 1, col ="red", pch = 19)
+
+# Overall
+boxplot(fifa_clean$Overall, col="lightcyan", horizontal=TRUE, main="Overall")
+points(mean(fifa_clean$Overall), 1, col ="red", pch = 19)
+
+# Wage
+boxplot(log(fifa_clean$Wage), col="lightcyan", horizontal=TRUE, main="Wage - Escala log")
+points(log(mean(fifa_clean$Wage)), 1, col ="red", pch = 19)
+
+# Value
+boxplot(log(fifa_clean$Value), col="lightcyan", horizontal=TRUE, main="Value - Escala log")
+points(log(mean(fifa_clean$Value)), 1, col ="red", pch = 19)
+
+# Height
+boxplot(fifa_clean$Height, col="lightcyan", horizontal=TRUE, main="Height")
+points(mean(fifa_clean$Height), 1, col ="red", pch = 19)
+
+# Weight
+boxplot(fifa_clean$Weight, col="lightcyan", horizontal=TRUE, main="Weight")
+points(mean(fifa_clean$Weight), 1, col ="red", pch = 19)
+```
+
+No aprecio valores anómalos más allá que los salarios que cobran los jugadores más cotizados de fútbol o su valor en el mercado. Dado que se sabe que es real que se paguen esos salarios y que coticen a esos valores, no los trataré como outliers y los mantendré en el conjunto.
+
+# Análisis de los datos
+
+## Selección de grupos de datos
+
+Se pretende hacer una comparación de zurdos y diestros, por lo tanto, vamos a descartar a los porteros y crear un conjunto de diestros y otro de zurdos.
+
+```{r grupos}
+# jugadores de campo
+jCampo <- fifa_clean[fifa_clean$Position!='GK',]
+# Zurdos
+zurdos <- jCampo[jCampo$Preferred.Foot=='Left',]
+# Diestro
+diestros <- jCampo[jCampo$Preferred.Foot=='Right',]
+```
+
+## Comprobación de normalidad y heterocedasticidad
+### Normalidad
+La normalidad en las variables cuantitativas la analizamos con el test Lilliefors, variante del de Kolmogorov-Smirnov. Fijamos un nivel de significación de 0.05. Aquellos resultados de p-value inferiores al nivel de significación nos indican que la distribución no es normal.
+```{r normalidad}
+for (i in 2:ncol(fifa_clean)) {
+  if(is.numeric(fifa_clean[,i])){
+    if(lillie.test(fifa_clean[,i])$p.value<0.05){
+      print(paste(colnames(fifa_clean)[i], ' No normal. p-value=',
+                  lillie.test(fifa_clean[,i])$p.value, sep=' '))
+    }else{
+      print(paste(colnames(fifa_clean)[i], ' Distribución normal. p-value=',
+                  lillie.test(fifa_clean[,i])$p.value, sep=' '))
+    }
+    
+    hist(fifa_clean[,i], col="lightcyan", main=paste("Histograma de ",
+                                                     colnames(fifa_clean)[i]),
+         xlab="Rating", ylab="Frecuencia", breaks=20)
+  }
+}
+```
+Los resultados muestran que no disponemos de distribuciones normales en las variables cuantitativas seleccionadas.
+
+### Homogeneidad de la varianza
+
+Con la prueba Fisher evaluamos las varianzas de las variables entre zurdos y diestros. Con un nivel de significancia de 0.001, cualquier p-valor inferior a él nos indica que debemos rechazar la hipótesis nula de igualdad de varianzas.
+```{r varianza}
+for (i in 2:ncol(fifa_clean)) {
+  if(is.numeric(fifa_clean[,i])){
+    if(var.test(zurdos[,i], diestros[,i])$p.value<0.001){
+      print(paste(colnames(fifa_clean)[i],
+                  'Varianzas disintas p-value=',
+                  var.test(zurdos[,i], diestros[,i])$p.value,
+                  sep=' '))
+    }else{
+      print(paste(colnames(fifa_clean)[i],
+                  'Homogeneas. p-value=',
+                  var.test(zurdos[,i], diestros[,i])$p.value,
+                  sep=' '))
+    }
+  }
+}
+
+```
+
+Parece que los atributos físicos de edad, altura y peso tienen varianzas semejantes.
+
+## Pruebas estadísticas
+### Contraste de hipótesis
+Esta prueba estadística consistirá en un contraste de hipótesis entre dos muestras, jugadores de campo zurdos y jugadores de campo diestros. De los datos anteriores sabemos que las varianzas son distintas entre zurdos y diestros para **Overall** y que no tienen distribuciones normales. Sin embargo, asumimos normalidad por el teorema del límite central ya que la muestras tienen un tamaño muy superior a 30.
+
+Se plantea entonces el contraste de hipótesis unilateral para un T test de la siguiente manera:
+
+* ¿Son los jugadores zurdos mejores que los diestros?
+  + **$H_{0}:$ $\mu_{1}=\mu_{2}$**
+  + **$H_{1}:$ $\mu_{1}>\mu_{2}$**
+
+Siendo $\mu_{1}$ la media muestral de los zurdos y $\mu_{2}$ de los diestros. $\alpha=0.05$.
+
+```{r contraste}
+# Asumimos normalidad por el teorema del límite central
+t.test(zurdos$Overall, diestros$Overall,
+       var.equal = FALSE,
+       conf.level=0.95,
+       alternative="greater")
+```
+Con un resultado p-valor<0.05 debemos rechazar la hipótesis nula y, por tanto, concluir con un nivel de confianza del 95% que los jugadores zurdos tienen de media mayor **Overall**
+
+### Test de correlación
+La segunda prueba es un análisis de correlación de las variables cuantitativas respecto a **Overall**. Usaré la correlación de *Spearman* ya que los datos no tienen una distribución normal.
+```{r correlacion}
+# ¿ Qué atributos están más correlacionados con el Overall ?
+columnas <- c('Age', 'Weak.Foot', 'Skill.Moves', 'Height', 'Weight')
+corr_coef <- columnas
+p_val <- columnas
+for (i in 1:length(columnas)) {
+  result = cor.test(jCampo[,columnas[i]],
+                    jCampo[,'Overall'],
+                    method = "spearman",
+                    exact=FALSE)
+    
+  corr_coef[i] <- result$estimate
+  p_val[i] <- result$p.value
+
+}
+
+out1 <- data.frame( var=columnas,
+                   Correlation=corr_coef,
+                   pvalue=p_val)
+out1 %>% kable() %>% kable_styling()
+```
+Con un rango de -1 a 1 vemos la estimación de la correlación de las variables de la tabala respecto a **Overall**. También se muestra el p-valor para conocer el peso que tiene en la correlación. Destacan **Age** y **Skill.Moves** entre ellas.
+
+### Modelo de regresión lineal
+Por último, pretendo predecir el valor de los jugadores con modelos de regresión lineal. Participarán como variables predictoras tanto las cuantitativas como las cualitativas.
+
+Entreno tres modelos con diferente combinación de variables y construyo una tabla resumen con la bondad del ajuste,$R^2$, para comparar sus desempeños.
+```{r regresión}
+
+# Predecir el valor de los jugadores
+lm1 <- lm(Value ~ Age + Overall + Club + Position, data = fifa_clean)
+lm2 <- lm(Value ~ Age + Preferred.Foot + Weak.Foot +
+            Skill.Moves + Height + Weight,
+          data = fifa_clean)
+lm3 <- lm(Value ~ Overall + Position + Work.Rate, data = fifa_clean)
+
+coeficientes <- matrix(c(1, summary(lm1)$r.squared,
+                               2, summary(lm2)$r.squared,
+                               3, summary(lm3)$r.squared),
+                             ncol = 2, byrow = TRUE)
+
+out2 <- data.frame( var=coeficientes[,1],
+                    R_squared=coeficientes[,2]
+                    )
+out2 %>% kable() %>% kable_styling()
+```
+El modelo **lm1** es mejor de los tres. No posee una bondad especialmente buena, pero nos da una idea aproximada de la valoración de un jugador de futbol.
+
+Usando ese modelo probaremos a predecir el valor en el mercado de 3 jugadores diferentes.  
+
+```{r prediccion}
+nuevosJugadores <- data.frame(
+  Age = c(22,28,18),
+  Overall = c(75,85,68),
+  Club = c('Borussia Dortmund', 'Borussia Dortmund', 'Chelsea'),
+  Position = c('CB', 'GK', 'RF')
+)
+
+predict(lm1, nuevosJugadores)
+```
+
+# Conclusión
+
+El dataset es muy completo, contiene gran cantidad de información, necesita unos pequeños trabajos de limpieza y formateo del contenido para poder manejarlo correctamente.
+
+Los outliers en los atributos de los jugadores podrían haber imputado con medidas de centralidad.
+
+La comparación entre zurdos y diestros convendría hacerla entre pares para hacer una comparación más fidedigna.
+
+Los resultados de los modelos no fueron tan satisfactorios como me hubiese gustado, hay demasiada incertidumbre. sin embargo, nos da una visión aproximada a la posible valoración de los jugadores. Con lo cual creo los resultados fueron válidos.
